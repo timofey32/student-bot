@@ -1,261 +1,256 @@
-- File → Open File → выбери C:\Users\Neril\student-bot\backend\prisma\schema.prisma
-  - Ctrl+A (выделить всё) → Delete
-  - Вставь только это:
+generator client {
+  provider = "prisma-client-js"
+}
 
-  prisma
-  generator client {
-    provider = "prisma-client-js"
-  }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
-  datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
-  }
+model User {
+  id            String    @id @default(cuid())
+  telegramId    String    @unique @map("telegram_id")
+  username      String?   @unique
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  middleName    String?   @map("middle_name")
+  avatarUrl     String?   @map("avatar_url")
+  role          String    @default("STUDENT")
+  phone         String?
+  email         String?   @unique
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  groupMembers  GroupMember[]
+  attendances   Attendance[]
+  homeworkSubmissions HomeworkSubmission[]
+  grades        Grade[]
+  parentLinks   ParentStudent[] @relation("Parent")
+  studentLinks  ParentStudent[] @relation("Student")
+  sentNotifications Notification[] @relation("SentNotifications")
+  receivedNotifications Notification[] @relation("ReceivedNotifications")
+  @@map("users")
+  @@index([telegramId])
+  @@index([role])
+}
 
-  model User {
-    id            String    @id @default(cuid())
-    telegramId    String    @unique @map("telegram_id")
-    username      String?   @unique
-    firstName     String    @map("first_name")
-    lastName      String    @map("last_name")
-    middleName    String?   @map("middle_name")
-    avatarUrl     String?   @map("avatar_url")
-    role          String    @default("STUDENT")
-    phone         String?
-    email         String?   @unique
-    isActive      Boolean   @default(true) @map("is_active")
-    createdAt     DateTime  @default(now()) @map("created_at")
-    updatedAt     DateTime  @updatedAt @map("updated_at")
-    groupMembers  GroupMember[]
-    attendances   Attendance[]
-    homeworkSubmissions HomeworkSubmission[]
-    grades        Grade[]
-    parentLinks   ParentStudent[] @relation("Parent")
-    studentLinks  ParentStudent[] @relation("Student")
-    sentNotifications Notification[] @relation("SentNotifications")
-    receivedNotifications Notification[] @relation("ReceivedNotifications")
-    @@map("users")
-    @@index([telegramId])
-    @@index([role])
-  }
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  inviteToken String   @unique @default(cuid()) @map("invite_token")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  members     GroupMember[]
+  subjects    Subject[]
+  pairs       Pair[]
+  materials   Material[]
+  homeworks   Homework[]
+  grades      Grade[]
+  parentStudents ParentStudent[] @relation("GroupParentStudents")
+  settings    Settings? @relation("GroupSettings")
+  @@map("groups")
+}
 
-  model Group {
-    id          String   @id @default(cuid())
-    name        String
-    code        String   @unique
-    inviteToken String   @unique @default(cuid()) @map("invite_token")
-    isActive    Boolean  @default(true) @map("is_active")
-    createdAt   DateTime @default(now()) @map("created_at")
-    updatedAt   DateTime @updatedAt @map("updated_at")
-    members     GroupMember[]
-    subjects    Subject[]
-    pairs       Pair[]
-    materials   Material[]
-    homeworks   Homework[]
-    grades      Grade[]
-    parentStudents ParentStudent[] @relation("GroupParentStudents")
-    settings    Settings? @relation("GroupSettings")
-    @@map("groups")
-  }
+model GroupMember {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  groupId   String   @map("group_id")
+  role      String   @default("STUDENT")
+  joinedAt  DateTime @default(now()) @map("joined_at")
+  isActive  Boolean  @default(true) @map("is_active")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  @@unique([userId, groupId])
+  @@map("group_members")
+  @@index([groupId])
+}
 
-  model GroupMember {
-    id        String   @id @default(cuid())
-    userId    String   @map("user_id")
-    groupId   String   @map("group_id")
-    role      String   @default("STUDENT")
-    joinedAt  DateTime @default(now()) @map("joined_at")
-    isActive  Boolean  @default(true) @map("is_active")
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-    group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
-    @@unique([userId, groupId])
-    @@map("group_members")
-    @@index([groupId])
-  }
+model Subject {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  name        String
+  shortName   String   @map("short_name")
+  color       String   @default("#3B82F6")
+  description String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  pairs   Pair[]
+  materials Material[]
+  homeworks Homework[]
+  grades  Grade[]
+  @@map("subjects")
+  @@index([groupId])
+}
 
-  model Subject {
-    id          String   @id @default(cuid())
-    groupId     String   @map("group_id")
-    name        String
-    shortName   String   @map("short_name")
-    color       String   @default("#3B82F6")
-    description String?
-    order       Int      @default(0)
-    isActive    Boolean  @default(true) @map("is_active")
-    createdAt   DateTime @default(now()) @map("created_at")
-    updatedAt   DateTime @updatedAt @map("updated_at")
-    group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
-    pairs   Pair[]
-    materials Material[]
-    homeworks Homework[]
-    grades  Grade[]
-    @@map("subjects")
-    @@index([groupId])
-  }
+model Pair {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  subjectId   String   @map("subject_id")
+  title       String
+  type        String   @default("LECTURE")
+  date        DateTime
+  startTime   String   @map("start_time")
+  endTime     String   @map("end_time")
+  room        String?
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject  Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  attendances Attendance[]
+  homeworks Homework[]
+  grades   Grade[] @relation("PairGrades")
+  @@map("pairs")
+  @@index([groupId, date])
+  @@index([subjectId])
+}
 
-  model Pair {
-    id          String   @id @default(cuid())
-    groupId     String   @map("group_id")
-    subjectId   String   @map("subject_id")
-    title       String
-    type        String   @default("LECTURE")
-    date        DateTime
-    startTime   String   @map("start_time")
-    endTime     String   @map("end_time")
-    room        String?
-    description String?
-    isActive    Boolean  @default(true) @map("is_active")
-    createdAt   DateTime @default(now()) @map("created_at")
-    updatedAt   DateTime @updatedAt @map("updated_at")
-    group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-    subject  Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-    attendances Attendance[]
-    homeworks Homework[]
-    grades   Grade[] @relation("PairGrades")
-    @@map("pairs")
-    @@index([groupId, date])
-    @@index([subjectId])
-  }
+model Attendance {
+  id        String   @id @default(cuid())
+  pairId    String   @map("pair_id")
+  userId    String   @map("user_id")
+  status    String   @default("PENDING")
+  markedAt  DateTime? @map("marked_at")
+  markedBy  String?  @map("marked_by")
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  pair Pair @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([pairId, userId])
+  @@map("attendances")
+  @@index([pairId])
+  @@index([userId])
+}
 
-  model Attendance {
-    id        String   @id @default(cuid())
-    pairId    String   @map("pair_id")
-    userId    String   @map("user_id")
-    status    String   @default("PENDING")
-    markedAt  DateTime? @map("marked_at")
-    markedBy  String?  @map("marked_by")
-    note      String?
-    createdAt DateTime @default(now()) @map("created_at")
-    updatedAt DateTime @updatedAt @map("updated_at")
-    pair Pair @relation(fields: [pairId], references: [id], onDelete: Cascade)
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-    @@unique([pairId, userId])
-    @@map("attendances")
-    @@index([pairId])
-    @@index([userId])
-  }
+model Material {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  subjectId   String?  @map("subject_id")
+  title       String
+  type        String   @default("OTHER")
+  fileUrl     String?  @map("file_url")
+  fileName    String?  @map("file_name")
+  fileSize    Int?     @map("file_size")
+  mimeType    String?  @map("mime_type")
+  externalUrl String?  @map("external_url")
+  description String?
+  uploadedBy  String   @map("uploaded_by")
+  isPublic    Boolean  @default(true) @map("is_public")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  group   Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  @@map("materials")
+  @@index([groupId, subjectId])
+}
 
-  model Material {
-    id          String   @id @default(cuid())
-    groupId     String   @map("group_id")
-    subjectId   String?  @map("subject_id")
-    title       String
-    type        String   @default("OTHER")
-    fileUrl     String?  @map("file_url")
-    fileName    String?  @map("file_name")
-    fileSize    Int?     @map("file_size")
-    mimeType    String?  @map("mime_type")
-    externalUrl String?  @map("external_url")
-    description String?
-    uploadedBy  String   @map("uploaded_by")
-    isPublic    Boolean  @default(true) @map("is_public")
-    order       Int      @default(0)
-    createdAt   DateTime @default(now()) @map("created_at")
-    updatedAt   DateTime @updatedAt @map("updated_at")
-    group   Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-    subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-    @@map("materials")
-    @@index([groupId, subjectId])
-  }
+model Homework {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  subjectId   String   @map("subject_id")
+  pairId      String?  @map("pair_id")
+  title       String
+  description String?
+  deadline    DateTime
+  maxScore    Int      @default(100) @map("max_score")
+  attachments String   @default("[]")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject  Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  pair     Pair?    @relation(fields: [pairId], references: [id], onDelete: SetNull)
+  submissions HomeworkSubmission[]
+  @@map("homeworks")
+  @@index([groupId, deadline])
+  @@index([pairId])
+}
 
-  model Homework {
-    id          String   @id @default(cuid())
-    groupId     String   @map("group_id")
-    subjectId   String   @map("subject_id")
-    pairId      String?  @map("pair_id")
-    title       String
-    description String?
-    deadline    DateTime
-    maxScore    Int      @default(100) @map("max_score")
-    attachments String   @default("[]")
-    isActive    Boolean  @default(true) @map("is_active")
-    createdAt   DateTime @default(now()) @map("created_at")
-    updatedAt   DateTime @updatedAt @map("updated_at")
-    group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-    subject  Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-    pair     Pair?    @relation(fields: [pairId], references: [id], onDelete: SetNull)
-    submissions HomeworkSubmission[]
-    @@map("homeworks")
-    @@index([groupId, deadline])
-    @@index([pairId])
-  }
+model HomeworkSubmission {
+  id          String   @id @default(cuid())
+  homeworkId  String   @map("homework_id")
+  userId      String   @map("user_id")
+  status      String   @default("PENDING")
+  content     String?
+  attachments String   @default("[]")
+  score       Int?
+  feedback    String?
+  submittedAt DateTime? @map("submitted_at")
+  checkedAt   DateTime? @map("checked_at")
+  checkedBy   String?  @map("checked_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  homework Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([homeworkId, userId])
+  @@map("homework_submissions")
+  @@index([homeworkId])
+  @@index([userId])
+}
 
-  model HomeworkSubmission {
-    id          String   @id @default(cuid())
-    homeworkId  String   @map("homework_id")
-    userId      String   @map("user_id")
-    status      String   @default("PENDING")
-    content     String?
-    attachments String   @default("[]")
-    score       Int?
-    feedback    String?
-    submittedAt DateTime? @map("submitted_at")
-    checkedAt   DateTime? @map("checked_at")
-    checkedBy   String?  @map("checked_by")
-    createdAt   DateTime @default(now()) @map("created_at")
-    updatedAt   DateTime @updatedAt @map("updated_at")
-    homework Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
-    user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-    @@unique([homeworkId, userId])
-    @@map("homework_submissions")
-    @@index([homeworkId])
-    @@index([userId])
-  }
+model Grade {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  subjectId   String   @map("subject_id")
+  userId      String   @map("user_id")
+  pairId      String?  @map("pair_id")
+  type        String
+  value       Int
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pair    Pair?   @relation("PairGrades", fields: [pairId], references: [id], onDelete: SetNull)
+  @@map("grades")
+  @@index([groupId, subjectId, userId])
+}
 
-  model Grade {
-    id          String   @id @default(cuid())
-    groupId     String   @map("group_id")
-    subjectId   String   @map("subject_id")
-    userId      String   @map("user_id")
-    pairId      String?  @map("pair_id")
-    type        String
-    value       Int
-    description String?
-    createdAt   DateTime @default(now()) @map("created_at")
-    updatedAt   DateTime @updatedAt @map("updated_at")
-    group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
-    subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-    user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-    pair    Pair?   @relation("PairGrades", fields: [pairId], references: [id], onDelete: SetNull)
-    @@map("grades")
-    @@index([groupId, subjectId, userId])
-  }
+model Settings {
+  id              String   @id @default(cuid())
+  groupId         String   @unique @map("group_id")
+  autoAttendance  Boolean  @default(false) @map("auto_attendance")
+  notifications   Boolean  @default(true)
+  timezone        String   @default("Europe/Moscow")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  @@map("settings")
+}
 
-  model Settings {
-    id              String   @id @default(cuid())
-    groupId         String   @unique @map("group_id")
-    autoAttendance  Boolean  @default(false) @map("auto_attendance")
-    notifications   Boolean  @default(true)
-    timezone        String   @default("Europe/Moscow")
-    createdAt       DateTime @default(now()) @map("created_at")
-    updatedAt       DateTime @updatedAt @map("updated_at")
-    group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
-    @@map("settings")
-  }
+model ParentStudent {
+  id        String   @id @default(cuid())
+  parentId  String   @map("parent_id")
+  studentId String   @map("student_id")
+  groupId   String   @map("group_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  parent  User   @relation("Parent", fields: [parentId], references: [id], onDelete: Cascade)
+  student User   @relation("Student", fields: [studentId], references: [id], onDelete: Cascade)
+  group   Group  @relation("GroupParentStudents", fields: [groupId], references: [id], onDelete: Cascade)
+  @@unique([parentId, studentId, groupId])
+  @@map("parent_students")
+}
 
-  model ParentStudent {
-    id        String   @id @default(cuid())
-    parentId  String   @map("parent_id")
-    studentId String   @map("student_id")
-    groupId   String   @map("group_id")
-    createdAt DateTime @default(now()) @map("created_at")
-    parent  User   @relation("Parent", fields: [parentId], references: [id], onDelete: Cascade)
-    student User   @relation("Student", fields: [studentId], references: [id], onDelete: Cascade)
-    group   Group  @relation("GroupParentStudents", fields: [groupId], references: [id], onDelete: Cascade)
-    @@unique([parentId, studentId, groupId])
-    @@map("parent_students")
-  }
-
-  model Notification {
-    id        String   @id @default(cuid())
-    userId    String   @map("user_id")
-    senderId  String?  @map("sender_id")
-    type      String
-    title     String
-    message   String
-    isRead    Boolean  @default(false) @map("is_read")
-    createdAt DateTime @default(now()) @map("created_at")
-    user   User   @relation("ReceivedNotifications", fields: [userId], references: [id], onDelete: Cascade)
-    sender User?  @relation("SentNotifications", fields: [senderId], references: [id], onDelete: SetNull)
-    @@map("notifications")
-    @@index([userId, isRead])
-  }
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  senderId  String?  @map("sender_id")
+  type      String
+  title     String
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  user   User   @relation("ReceivedNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  sender User?  @relation("SentNotifications", fields: [senderId], references: [id], onDelete: SetNull)
+  @@map("notifications")
+  @@index([userId, isRead])
+}
