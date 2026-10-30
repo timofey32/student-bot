@@ -10,6 +10,8 @@ ARG CACHE_BUST=1
 
   RUN npm ci --workspaces --include-workspace-root
 
+  RUN npm run build --workspace=@student-bot/backend
+
   COPY backend/prisma ./backend/prisma/
   RUN cd backend && npx prisma generate
 
