@@ -156,7 +156,7 @@ export async function gradeRoutes(app: FastifyInstance) {
   // Create grade (admin)
   app.post('/', { preHandler: [requireAuth, requireGroupAdmin] }, async (request, reply) => {
     const membership = (request as any).membership
-    const data = createGradeSchema.parse({ ...request.body, groupId: membership.groupId, createdBy: request.auth!.userId })
+    const data = createGradeSchema.parse({ ...(request.body as object), groupId: membership.groupId, createdBy: request.auth!.userId })
 
     const grade = await prisma.grade.create({
       data,
@@ -174,7 +174,7 @@ export async function gradeRoutes(app: FastifyInstance) {
     const results = await Promise.all(
       data.grades.map(g =>
         prisma.grade.create({
-          data: { ...g, groupId: membership.groupId, createdBy: request.auth!.userId },
+          data: { ...(g as object), groupId: membership.groupId, createdBy: request.auth!.userId },
           include: { subject: { select: { id: true, name: true, shortName: true, color: true } } },
         })
       )
