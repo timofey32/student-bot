@@ -1,28 +1,19 @@
-# Bot Dockerfile for Railway (uses tsx - no build step needed)
-FROM node:20-alpine
+FROM node:20-bullseye-slim
+
+ARG CACHE_BUST=1
 
 WORKDIR /app
 
-# Install dependencies
 COPY package*.json ./
 COPY bot/package*.json ./bot/
 COPY shared/package*.json ./shared/
-COPY backend/package*.json ./backend/
 
 RUN npm ci --workspaces --include-workspace-root
 
-# Copy Prisma schema and generate client
-COPY backend/prisma ./backend/prisma/
-RUN cd backend && npx prisma generate
+COPY bot/tsconfig.json ./bot/
+COPY bot/src ./bot/src/
+COPY shared/src ./shared/src/
 
-# Copy source code
-COPY . .
+RUN npm run build --workspace=@student-bot/bot
 
-# Expose port (if needed for webhook)
-EXPOSE 3001
-
-# Start with tsx (no build needed)
-ENV NODE_ENV=production
-ENV PORT=3001
-
-CMD ["npx", "tsx", "bot/src/index.ts"]
+CMD ["sh", "-c", "cd bot && node dist/index.js"]
