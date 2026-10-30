@@ -21,4 +21,4 @@ ARG CACHE_BUST=1
 
   COPY . .
 
-  CMD ["sh", "-c", "cd backend && npx prisma migrate deploy && node dist/index.js"]
+  CMD ["sh", "-c", "cd backend && node dist/index.js"]
