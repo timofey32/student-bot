@@ -1,16 +1,27 @@
 import 'dotenv/config'
-import { Telegraf, Markup, Scenes, session } from 'telegraf'
+import { Telegraf, Markup, Scenes, session, Context } from 'telegraf'
 import { PrismaClient } from '@prisma/client'
-import { config } from '../utils/config.js'
 
 const prisma = new PrismaClient()
-
-const bot = new Telegraf(process.env.BOT_TOKEN!)
 
 interface SessionData {
   authState?: 'waiting_name' | 'waiting_group'
   tempData?: Record<string, any>
 }
+
+interface BotContext extends Context {
+  session: SessionData
+  dbUser?: {
+    id: string
+    telegramId: string
+    username?: string
+    firstName: string
+    lastName: string
+    role: string
+  }
+}
+
+const bot = new Telegraf<BotContext>(process.env.BOT_TOKEN!)
 
 bot.use(session())
 
@@ -115,7 +126,7 @@ bot.action('my_groups', async (ctx) => {
     )
   }
 
-  const buttons = memberships.map(m => [
+  const buttons = memberships.map((m) => [
     Markup.button.webApp(
       `${m.group.name} (${m.role === 'ADMIN' ? '👑' : '👤'})`,
       `${process.env.MINI_APP_URL}?group=${m.group.id}`
@@ -143,6 +154,7 @@ bot.action('back_to_main', async (ctx) => {
 // WebApp data handler (when user sends data from Mini App)
 bot.on('web_app_data', async (ctx) => {
   try {
+    if (!ctx.webAppData?.data) return
     const data = JSON.parse(ctx.webAppData.data)
 
     switch (data.action) {
