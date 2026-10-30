@@ -54,7 +54,7 @@ export async function reportRoutes(app: FastifyInstance) {
   // Upload report card (admin)
   app.post('/report-cards', { preHandler: [requireAuth, requireGroupAdmin] }, async (request, reply) => {
     const membership = (request as any).membership
-    const data = uploadReportCardSchema.parse({ ...request.body, groupId: membership.groupId, uploadedBy: request.auth!.userId })
+    const data = uploadReportCardSchema.parse({ ...(request.body as object), groupId: membership.groupId, uploadedBy: request.auth!.userId })
 
     const report = await prisma.reportCard.create({ data })
 

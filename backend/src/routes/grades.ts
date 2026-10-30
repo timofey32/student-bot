@@ -122,7 +122,7 @@ export async function gradeRoutes(app: FastifyInstance) {
     })
 
     // Calculate weighted average by subject
-    const bySubject: Record<string, { grades: any[]; totalWeight: number; weightedSum: number }> = {}
+    const bySubject: Record<string, { grades: any[]; totalWeight: number; weightedSum: number; subject: any }> = {}
 
     for (const g of grades) {
       const key = g.subjectId

@@ -42,7 +42,7 @@ export async function subjectRoutes(app: FastifyInstance) {
   // Create subject (admin)
   app.post('/', { preHandler: [requireAuth, requireGroupAdmin] }, async (request, reply) => {
     const membership = (request as any).membership
-    const data = createSubjectSchema.parse({ ...request.body, groupId: membership.groupId })
+    const data = createSubjectSchema.parse({ ...(request.body as object), groupId: membership.groupId })
 
     const maxOrder = await prisma.subject.findFirst({
       where: { groupId: membership.groupId },
@@ -51,7 +51,7 @@ export async function subjectRoutes(app: FastifyInstance) {
     })
 
     const subject = await prisma.subject.create({
-      data: { ...data, order: (maxOrder?.order ?? -1) + 1 },
+      data: { ...(data as object), order: (maxOrder?.order ?? -1) + 1 },
     })
 
     return reply.status(201).send({ success: true, data: subject })

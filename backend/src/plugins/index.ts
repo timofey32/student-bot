@@ -41,7 +41,7 @@ export async function registerPlugins(app: FastifyInstance) {
     if (authHeader?.startsWith('Bearer ')) {
       try {
         const token = authHeader.slice(7)
-        const decoded = await request.jwtVerify<{ userId: string; role: string }>({ token })
+        const decoded = await request.jwtVerify<{ userId: string; role: string }>()
         request.auth = decoded
       } catch {
         // Invalid token - leave auth as null

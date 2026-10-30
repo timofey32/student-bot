@@ -91,7 +91,7 @@ export async function materialRoutes(app: FastifyInstance) {
   // Create material (admin)
   app.post('/', { preHandler: [requireAuth, requireGroupAdmin] }, async (request, reply) => {
     const membership = (request as any).membership
-    const data = createMaterialSchema.parse({ ...request.body, groupId: membership.groupId, uploadedBy: request.auth!.userId })
+    const data = createMaterialSchema.parse({ ...(request.body as object), groupId: membership.groupId, uploadedBy: request.auth!.userId })
 
     const maxOrder = await prisma.material.findFirst({
       where: { groupId: membership.groupId },

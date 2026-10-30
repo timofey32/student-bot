@@ -118,7 +118,7 @@ export async function homeworkRoutes(app: FastifyInstance) {
   // Create homework (admin)
   app.post('/', { preHandler: [requireAuth, requireGroupAdmin] }, async (request, reply) => {
     const membership = (request as any).membership
-    const data = createHomeworkSchema.parse({ ...request.body, groupId: membership.groupId })
+    const data = createHomeworkSchema.parse({ ...(request.body as object), groupId: membership.groupId })
 
     const homework = await prisma.homework.create({
       data,

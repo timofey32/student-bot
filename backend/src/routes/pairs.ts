@@ -182,7 +182,7 @@ export async function pairRoutes(app: FastifyInstance) {
   // Create pair (admin)
   app.post('/', { preHandler: [requireAuth, requireGroupAdmin] }, async (request, reply) => {
     const membership = (request as any).membership
-    const data = createPairSchema.parse({ ...request.body, groupId: membership.groupId })
+    const data = createPairSchema.parse({ ...(request.body as object), groupId: membership.groupId })
 
     const pair = await prisma.pair.create({
       data,
