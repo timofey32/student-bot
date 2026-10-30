@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # Database
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: student_bot
+      POSTGRES_USER: student_bot
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U student_bot -d student_bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://student_bot:${DB_PASSWORD:-changeme}@db:5432/student_bot?schema=public
+      JWT_SECRET: ${JWT_SECRET:-changeme}
+      JWT_EXPIRES_IN: 7d
+      BOT_TOKEN: ${BOT_TOKEN}
+      BOT_USERNAME: ${BOT_USERNAME}
+      MINI_APP_URL: ${MINI_APP_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+      MAX_FILE_SIZE: 10485760
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - backend_uploads:/app/uploads
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Telegram Bot
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      BOT_TOKEN: ${BOT_TOKEN}
+      BOT_USERNAME: ${BOT_USERNAME}
+      MINI_APP_URL: ${MINI_APP_URL}
+      DATABASE_URL: postgresql://student_bot:${DB_PASSWORD:-changeme}@db:5432/student_bot?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Frontend (served by nginx in production)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api/v1
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  backend_uploads:

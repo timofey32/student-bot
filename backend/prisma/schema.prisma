@@ -1,0 +1,324 @@
+// Prisma Schema для Student Bot
+// Запуск: npx prisma generate && npx prisma db push
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"  // В проде меняем на "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// MODELS (Enums заменены на String, Json на String для SQLite)
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  telegramId    String    @unique @map("telegram_id")
+  username      String?   @unique
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  middleName    String?   @map("middle_name")
+  avatarUrl     String?   @map("avatar_url")
+  role          String    @default("STUDENT")  // SUPER_ADMIN, ADMIN, STUDENT, PARENT
+  phone         String?
+  email         String?   @unique
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  groupMembers  GroupMember[]
+  attendances   Attendance[]
+  homeworkSubmissions HomeworkSubmission[]
+  grades        Grade[]
+  parentLinks   ParentStudent[] @relation("Parent")
+  studentLinks  ParentStudent[] @relation("Student")
+  sentNotifications Notification[] @relation("SentNotifications")
+  receivedNotifications Notification[] @relation("ReceivedNotifications")
+
+  @@map("users")
+  @@index([telegramId])
+  @@index([role])
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique  // Код для приглашения (короткий)
+  inviteToken String   @unique @default(cuid()) @map("invite_token")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  members     GroupMember[]
+  subjects    Subject[]
+  pairs       Pair[]
+  materials   Material[]
+  homeworks   Homework[]
+  grades      Grade[]
+  parentStudents ParentStudent[] @relation("GroupParentStudents")
+  settings    Settings? @relation("GroupSettings")
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  groupId   String   @map("group_id")
+  role      String   @default("STUDENT")  // SUPER_ADMIN, ADMIN, STUDENT, PARENT
+  joinedAt  DateTime @default(now()) @map("joined_at")
+  isActive  Boolean  @default(true) @map("is_active")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@map("group_members")
+  @@index([groupId])
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  name        String
+  shortName   String   @map("short_name")
+  color       String   @default("#3B82F6")  // Hex color для UI
+  description String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  pairs   Pair[]
+  materials Material[]
+  homeworks Homework[]
+  grades  Grade[]
+
+  @@map("subjects")
+  @@index([groupId])
+}
+
+model Pair {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  subjectId   String   @map("subject_id")
+  title       String
+  type        String   @default("LECTURE")  // LECTURE, PRACTICE, LAB, EXAM, CONSULTATION
+  date        DateTime
+  startTime   String   @map("start_time")  // HH:mm
+  endTime     String   @map("end_time")    // HH:mm
+  room        String?
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject  Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  attendances Attendance[]
+  homeworks Homework[]
+  grades   Grade[] @relation("PairGrades")
+
+  @@map("pairs")
+  @@index([groupId, date])
+  @@index([subjectId])
+}
+
+model Attendance {
+  id        String   @id @default(cuid())
+  pairId    String   @map("pair_id")
+  userId    String   @map("user_id")
+  status    String   @default("PENDING")  // PRESENT, ABSENT, LATE, EXCUSED, PENDING
+  markedAt  DateTime? @map("marked_at")
+  markedBy  String?  @map("marked_by")  // кто отметил (userId)
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  pair Pair @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pairId, userId])
+  @@map("attendances")
+  @@index([pairId])
+  @@index([userId])
+}
+
+model Material {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  subjectId   String?  @map("subject_id")
+  title       String
+  type        String   @default("OTHER")  // LECTURE_NOTES, METHODOLOGY, PRESENTATION, VIDEO, LINK, OTHER
+  fileUrl     String?  @map("file_url")
+  fileName    String?  @map("file_name")
+  fileSize    Int?     @map("file_size")
+  mimeType    String?  @map("mime_type")
+  externalUrl String?  @map("external_url")
+  description String?
+  uploadedBy  String   @map("uploaded_by")
+  isPublic    Boolean  @default(true) @map("is_public")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  group   Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+
+  @@map("materials")
+  @@index([groupId, subjectId])
+}
+
+model Homework {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  subjectId   String   @map("subject_id")
+  pairId      String?  @map("pair_id")
+  title       String
+  description String?
+  deadline    DateTime
+  maxScore    Int      @default(100) @map("max_score")
+  attachments String   @default("[]")  // JSON string array of file URLs
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject  Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  pair     Pair?    @relation(fields: [pairId], references: [id], onDelete: SetNull)
+  submissions HomeworkSubmission[]
+
+  @@map("homeworks")
+  @@index([groupId, deadline])
+  @@index([pairId])
+}
+
+model HomeworkSubmission {
+  id          String   @id @default(cuid())
+  homeworkId  String   @map("homework_id")
+  userId      String   @map("user_id")
+  status      String   @default("PENDING")  // PENDING, SUBMITTED, CHECKED, ACCEPTED, REJECTED, LATE
+  content     String?  // Текст ответа
+  attachments String   @default("[]")  // JSON string array of file URLs
+  score       Int?
+  feedback    String?
+  submittedAt DateTime? @map("submitted_at")
+  checkedAt   DateTime? @map("checked_at")
+  checkedBy   String?  @map("checked_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  homework Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([homeworkId, userId])
+  @@map("homework_submissions")
+  @@index([homeworkId])
+  @@index([userId])
+}
+
+model Grade {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  subjectId   String   @map("subject_id")
+  userId      String   @map("user_id")
+  pairId      String?  @map("pair_id")
+  type        String   // HOMEWORK, QUIZ, MIDTERM, EXAM, PROJECT, PARTICIPATION, BONUS
+  title       String
+  value       Float    // Оценка (2-5, 0-100, etc.)
+  maxValue    Float    @default(100) @map("max_value")
+  weight      Float    @default(1.0)  // Вес для расчёта среднего
+  date        DateTime
+  comment     String?
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pair    Pair?   @relation("PairGrades", fields: [pairId], references: [id], onDelete: SetNull)
+
+  @@map("grades")
+  @@index([groupId, userId])
+  @@index([subjectId, userId])
+}
+
+model ParentStudent {
+  id         String   @id @default(cuid())
+  parentId   String   @map("parent_id")
+  studentId  String   @map("student_id")
+  groupId    String   @map("group_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  parent  User   @relation("Parent", fields: [parentId], references: [id], onDelete: Cascade)
+  student User   @relation("Student", fields: [studentId], references: [id], onDelete: Cascade)
+  group   Group  @relation("GroupParentStudents", fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId, groupId])
+  @@map("parent_students")
+  @@index([parentId])
+  @@index([studentId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // attendance_missed, homework_assigned, grade_added, etc.
+  title     String
+  message   String
+  senderId  String?  @map("sender_id")
+  recipientId String @map("recipient_id")
+  groupId   String?  @map("group_id")
+  pairId    String?  @map("pair_id")
+  homeworkId String? @map("homework_id")
+  gradeId   String?  @map("grade_id")
+  isRead    Boolean  @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  sender    User?   @relation("SentNotifications", fields: [senderId], references: [id], onDelete: SetNull)
+  recipient User    @relation("ReceivedNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+  @@index([recipientId, isRead])
+  @@index([groupId])
+}
+
+model ReportCard {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  studentId   String   @map("student_id")
+  periodStart DateTime @map("period_start")
+  periodEnd   DateTime @map("period_end")
+  fileUrl     String   @map("file_url")  // Фото/PDF рапортички
+  fileName    String   @map("file_name")
+  mimeType    String   @map("mime_type")
+  uploadedBy  String   @map("uploaded_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("report_cards")
+  @@index([groupId, studentId])
+}
+
+model Settings {
+  id              String   @id @default(cuid())
+  groupId         String   @unique @map("group_id")
+  lateThreshold   Int      @default(15) @map("late_threshold")  // минут для опоздания
+  autoMarkAbsent  Boolean  @default(false) @map("auto_mark_absent")
+  notifyParents   Boolean  @default(true) @map("notify_parents")
+  notifyStudents  Boolean  @default(true) @map("notify_students")
+  weekStartsOn    Int      @default(1) @map("week_starts_on")  // 1 = Monday
+  timezone        String   @default("Europe/Moscow")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  group Group @relation("GroupSettings", fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("settings")
+}
