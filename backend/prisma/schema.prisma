@@ -1,4 +1,8 @@
- prisma
+- File → Open File → выбери C:\Users\Neril\student-bot\backend\prisma\schema.prisma
+  - Ctrl+A (выделить всё) → Delete
+  - Вставь только это:
+
+  prisma
   generator client {
     provider = "prisma-client-js"
   }
