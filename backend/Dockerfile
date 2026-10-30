@@ -1,5 +1,7 @@
 FROM node:20-slim
 
+ARG CACHE_BUST=1
+
   WORKDIR /app
 
   COPY package*.json ./
