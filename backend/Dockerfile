@@ -10,6 +10,10 @@ ARG CACHE_BUST=1
 
   RUN npm ci --workspaces --include-workspace-root
 
+  COPY backend/tsconfig.json ./backend/
+  COPY backend/src ./backend/src/
+  COPY shared/src ./shared/src/
+
   RUN npm run build --workspace=@student-bot/backend
 
   COPY backend/prisma ./backend/prisma/
